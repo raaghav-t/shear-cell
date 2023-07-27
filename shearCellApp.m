@@ -1,18 +1,8 @@
 function shearCellApp
 
-% Calibration points:
-water1   = 0;
-digital1 = 0;
-
-water2   = 5;
-digital2 = 5;
-
-% Calibration slope
-m        = (water2-water1)/(digital2 - digital1);
-
 % Define Variables
 voltage  = 0;
-step     = 0;
+time     = 0;
 fig = uifigure('WindowState','fullscreen', ...
     'Name','Plot App by Raaghav');
 g = uigridlayout(fig,[6 6], 'BackgroundColor',[222/255 255/255 241/255]);
@@ -23,36 +13,28 @@ g.ColumnWidth = {'1x','1x','1x','1x','1x','1x'};
 % Voltage versus steps
 axisVoltStep = uiaxes(g);
 axisVoltStep.Layout.Row = [2 5];
-axisVoltStep.Layout.Column = [1 2];
+axisVoltStep.Layout.Column = [1 6];
 axisVoltStep.Title.String = 'Voltage Versus Steps';
 axisVoltStep.XLabel.String = 'Voltage (V)';
 axisVoltStep.YLabel.String = 'Steps (crank)';
 
-% Water versus height
-axisWaterHeight = uiaxes(g);
-axisWaterHeight.Layout.Row = [2 5];
-axisWaterHeight.Layout.Column = [3 4];
-axisWaterHeight.Title.String = 'Inches of Water Versus Height';
-axisWaterHeight.XLabel.String = 'Water (in)';
-axisWaterHeight.YLabel.String = 'Height (mm)';
-
-% Velocity versus distance
-axisVelocityDistance = uiaxes(g);
-axisVelocityDistance.Layout.Row = [2 5];
-axisVelocityDistance.Layout.Column = [5 6];
-axisVelocityDistance.Title.String = 'Normalized Velocity Versus Distance';
-axisVelocityDistance.XLabel.String = 'U/Uinf';
-axisVelocityDistance.YLabel.String = 'h/diameter';
-
 % Interactable elements
 % Button to aquire the next datapoint and plot it
-recordButtonColor = [1 0 0];
+
 recordButton = uibutton(g, ...
-    "Text","Record Next Point", ...
+    "Text","Begin Recording", ...
     "ButtonPushedFcn", @(src,event) recordButtonPushed(), ...
-    "BackgroundColor", recordButtonColor);
+    "BackgroundColor", [0.5 1 0.5]);
 recordButton.Layout.Row = 6;
 recordButton.Layout.Column = 1;
+
+% Test
+recordButton = uibutton(g, ...
+    "Text","Begin Recording", ...
+    "ButtonPushedFcn", @(src,event) testButtonPushed(), ...
+    "BackgroundColor", [0.5 1 0.5]);
+recordButton.Layout.Row = 6;
+recordButton.Layout.Column = 2;
 
 % Button that saves data to a csv
 saveButton = uibutton(g, ...
@@ -103,13 +85,13 @@ stepSelector.Items = {'2', '1', '0.5'};
 stepSelector.Value = '2';
 
 % Field that allows you to change filename (first half)
-discType = uieditfield(g, "Value", 'set disc type', ...
+discType = uieditfield(g, "Value", 'set material', ...
     'BackgroundColor',[229/255 202/255 250/255]);
 discType.Layout.Row = 6;
 discType.Layout.Column = 3;
 
 % Field that allows you to change filename (second half)
-stationType = uieditfield(g, "Value", 'set station', ...
+stationType = uieditfield(g, "Value", 'set load (N)', ...
     'BackgroundColor',[229/255 202/255 250/255]);
 stationType.Layout.Row = 6;
 stationType.Layout.Column = 4;
@@ -119,69 +101,68 @@ stationType.Layout.Column = 4;
 voltX     = [];
 stepY     = [];
 
-% Initialize water - height plot data
-waterX    = [];
-heightY   = [];
-
-% Initialize velocity - distance plot data
-velocityX = [];
-distanceY = [];
-
 % Arduino Attach
-a = arduino("/dev/cu.usbmodem2101", "Uno", Libraries = "I2C");
+serial = serialport("/dev/cu.usbmodem2101",57600);
+configureTerminator(serial,"CR/LF");
+flush(serial);
+serial.UserData = struct("Data",[],"Count",1);
 
-% Configure Pins
-configurePin(a,'A0','AnalogInput');
-configurePin(a,'D3','DigitalOutput');
+    function testButtonPushed(src, ~)
 
-% Generate 'random' data to read
-writePWMVoltage(a,'D3',3);
+        % Read the ASCII data from the serialport object.
+        data = readline(src);
 
-stateA = 1;
-while stateA == 1
-    voltage   = readVoltage(a,'A0');
-    livePanelValue.Text = sprintf('%5.3f',voltage);
-    pause(0.5);
-end
+        % Convert the string data to numeric type and save it in the UserData
+        % property of the serialport object.
+        src.UserData.Data(end+1) = str2double(data);
+
+        % Update the Count value of the serialport object.
+        src.UserData.Count = src.UserData.Count + 1;
+
+        % If 1001 data points have been collected from the Arduino, switch off the
+        % callbacks and plot the data.
+        if src.UserData.Count > 1001
+            configureCallback(src, "off");
+            plot(axisVoltStep,src.UserData.Data(2:end));
+        end
+    end
+% 
+% % Configure Pins
+% configurePin(a,'A0','AnalogInput');
+% configurePin(a,'D3','DigitalOutput');
+% 
+% % Generate 'random' data to read
+% writePWMVoltage(a,'D3',3);
+
+% stateA = 1;
+% while stateA == 1
+%     voltage   = readVoltage(a,'A0');
+%     livePanelValue.Text = sprintf('%5.3f',voltage);
+%     pause(0.5);
+% end
     function recordButtonPushed()
+        while state1 == 1
         % Define voltage and step
         voltage   = readVoltage(a,'A0');
-        step      = step + str2double(stepSelector.Value);
+        time      = time + 0.1;
         % Append the voltstep data to the cumulative data
         voltX     = [voltX, voltage];
         stepY     = [stepY, step];
 
-        % Define inches of water and height in mm
-        water     = voltage * m;
-        height    = step * 3;
+        % Define voltage and step
+        shearForce   = voltage;
 
-        % Append the waterheight data to the cumulative data
-        waterX    = [waterX, water];
-        heightY   = [heightY, height];
-
-
-        % Normalized velocity and distance
-        maxWater  = max(waterX);
-        velocity  = sqrt(water/maxWater);
-        distance  = height/50;
-        % Append the velocitydistance data to the cumulative data
-        velocityX = [velocityX, velocity];
-        distanceY = [distanceY, distance];
-
-        % change button color
-        if recordButtonColor(1) == 0
-        else
-            recordButtonColor = [(1-step/70) step/70 0];
-            recordButton.BackgroundColor = recordButtonColor;
-        end
+        % Append the voltstep data to the cumulative data
+        voltX     = [voltX, shearForce];
+        stepY     = [stepY, step];
 
         % Update latest value
         valuePanelValue.Text = sprintf('%5.3f',voltage);
         
         % Plot the cumulative data
         plot(axisVoltStep, voltX, stepY);
-        plot(axisWaterHeight, waterX, heightY)
-        plot(axisVelocityDistance, velocityX, distanceY)
+        pause(0.1)
+        end
     end
 
     function saveButtonPushed()
@@ -200,8 +181,7 @@ end
 
     function endButtonPushed()
             stateA = 0;
-            endButton.Text = 'Live Ended';
-            livePanelValue.Text = 'Live Ended';
+            endButton.Text = 'Recording Ended';
             endButton.BackgroundColor = [252 207 149]/255;
     end
 end
