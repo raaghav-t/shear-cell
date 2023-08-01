@@ -141,7 +141,7 @@ serial.UserData = struct("Data",[],"Count",1);
 %     pause(0.5);
 % end
     function recordButtonPushed()
-        while state1 == 1
+        while stateA == 1
         % Define voltage and step
         voltage   = readVoltage(a,'A0');
         time      = time + 0.1;
