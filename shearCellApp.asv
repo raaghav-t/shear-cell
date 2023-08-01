@@ -103,11 +103,20 @@ stationType.Layout.Column = 4;
 voltY     = [];
 timeX     = [];
 
+% Arduino Attach
+a = arduino("/dev/cu.usbmodem2101", "Uno", Libraries = "I2C");
+
 % Arduino serial read
 serial = serialport("/dev/cu.usbmodem2101", 57600);
 configureTerminator(serial,"CR/LF");
 flush(serial);
 serial.UserData = struct("Data",[],"Count",1);
+
+% Configure Pins
+
+configurePin(a,'A0','AnalogInput');
+configurePin(a,'D3','DigitalInput');
+configurePin(a,'D2','DigitalInput');
 
 stateA = 0;
 
@@ -135,19 +144,23 @@ stateA = 0;
     function recordButtonPushed()
         stateA = 1;
         while stateA == 1
+
             % Read the ASCII data from the serialport object.
-            data = readline(serial);
+            data = readline(src);
 
             % Convert the string data to numeric type and save it in the UserData
             % property of the serialport object.
-            serial.UserData.Data(end+1) = str2double(data);
+            src.UserData.Data(end+1) = str2double(data);
 
             % Update the Count value of the serialport object.
-            serial.UserData.Count = serial.UserData.Count + 1;
+            src.UserData.Count = src.UserData.Count + 1;
 
-            % Data is ploted
-            configureCallback(serial, "off");
-            plot(axisVoltStep,serial.UserData.Data(2:end));
+            % If 1001 data points have been collected from the Arduino, switch off the
+            % callbacks and plot the data.
+            if src.UserData.Count > 1001
+                configureCallback(src, "off");
+                plot(src.UserData.Data(2:end));
+            end
         end
     end
 
