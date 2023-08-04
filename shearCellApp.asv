@@ -5,7 +5,7 @@ sampleRate = 1;
 
 fig = uifigure('WindowState','fullscreen', ...
     'Name','ShearCell App by Raaghav');
-g = uigridlayout(fig,[6 6], 'BackgroundColor',[234 249 217]/255);
+g = uigridlayout(fig,[6 6], 'BackgroundColor',[252 236 201]/255);
 g.RowHeight = {'1x','2x','2x','2x','2x','1x'};
 g.ColumnWidth = {'1x','1x','1x','1x','1x','1x'};
 
@@ -77,6 +77,11 @@ normalLoad = uieditfield(g, "Value", 'set load (N)', ...
 normalLoad.Layout.Row = 6;
 normalLoad.Layout.Column = 4;
 
+
+% Initialize voltage - step plot data
+voltY     = [];
+timeX     = [];
+
 % Arduino serial read
 serial = serialport("/dev/cu.usbmodem2101", 57600);
 configureTerminator(serial,"CR/LF");
@@ -86,15 +91,13 @@ serial.UserData = struct("Data",[],"Time",[]);
 stateA = 0;
 
     function recordButtonPushed()
-        flush(serial);
-        serial.UserData = struct("Data",[],"Time",[]);
         stateA = 1;
-        time = 0;
+        time = 0 - 2/sampleRate;
         while stateA == 1
             time = time + 0.1; %/sampleRate;
             % Read the ASCII data from the serialport object.
             data = readline(serial);
-            
+            disp(data);
             % Convert the string data to numeric type and save it
             % in the UserData property of the serialport object.
             serial.UserData.Data(end+1) = ...
@@ -115,8 +118,8 @@ stateA = 0;
     end
 
     function saveButtonPushed()
-        data = [serial.UserData.Time(2:end), serial.UserData.Data(2:end)];
-        valuePanelValue.Text = data;
+        data = [voltY(:), timeX(:)];
+
         fileName1  = materialType.Value;
         fileName2  = normalLoad.Value;
         formatSpec = '%s%s.csv';
@@ -135,10 +138,10 @@ stateA = 0;
     end
 
     function resetButtonPushed()
+        serial.UserData.Time = [];
+        serial.UserData.Data = [];
         plot(axisVoltStep,0,0)
         endButton.Text = 'End Recording';
-        endButton.BackgroundColor = [95 15 64]/255;
-        saveButton.Text = 'Save';
-        saveButton.BackgroundColor = [126 178 221]/255;
+        endButton.BackgroundColor = [252 207 149]/255;
     end
 end
