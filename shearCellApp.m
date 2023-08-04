@@ -108,9 +108,6 @@ stateA = 0;
             plot(axisVoltStep, ...
                 serial.UserData.Time(2:end), ...
                 serial.UserData.Data(2:end));
-
-            % % Sample rate
-            % pause(1/sampleRate);
         end
     end
 
