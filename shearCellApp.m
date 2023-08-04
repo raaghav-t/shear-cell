@@ -11,12 +11,20 @@ g.ColumnWidth = {'1x','1x','1x','1x','1x','1x'};
 
 % Plots to visualize data as its collected
 % Voltage versus steps
-axisVoltStep = uiaxes(g);
-axisVoltStep.Layout.Row = [2 5];
-axisVoltStep.Layout.Column = [1 6];
-axisVoltStep.Title.String = 'Force Versus Time';
-axisVoltStep.XLabel.String = 'Time (s)';
-axisVoltStep.YLabel.String = 'Force (N)';
+axisForceTime = uiaxes(g);
+axisForceTime.Layout.Row = [2 5];
+axisForceTime.Layout.Column = [1 3];
+axisForceTime.Title.String = 'Force Versus Time';
+axisForceTime.XLabel.String = 'Time (s)';
+axisForceTime.YLabel.String = 'Force (N)';
+
+% Voltage versus steps
+axisTorqueTime = uiaxes(g);
+axisTorqueTime.Layout.Row = [2 5];
+axisTorqueTime.Layout.Column = [4 6];
+axisTorqueTime.Title.String = 'Force Versus Time';
+axisTorqueTime.XLabel.String = 'Time (s)';
+axisTorqueTime.YLabel.String = 'Torque (N*m)';
 
 % Interactable elements
 % Button to begin recording and plotting data
@@ -87,27 +95,31 @@ stateA = 0;
 
     function recordButtonPushed()
         flush(serial);
-        serial.UserData = struct("Data",[],"Time",[]);
+        serial.UserData = struct("Force",[],"Torque",[],"Time",[]);
         stateA = 1;
         time = 0;
         while stateA == 1
             time = time + 0.1; %/sampleRate;
             % Read the ASCII data from the serialport object.
-            data = readline(serial);
-            
+            weight = readline(serial);
+            force  = str2double(weight)/9.80665;
+            torque = force * 1;
             % Convert the string data to numeric type and save it
             % in the UserData property of the serialport object.
-            serial.UserData.Data(end+1) = ...
-                str2double(data)/9.80665;
+            serial.UserData.Force(end+1) = force;
 
+            serial.UserData.Force(end+1) = torque;
             % Update the Count value of the serialport object.
             serial.UserData.Time(end+1) = time;
 
             % Data is ploted
             configureCallback(serial, "off");
-            plot(axisVoltStep, ...
+            plot(axisForceTime, ...
                 serial.UserData.Time(2:end), ...
-                serial.UserData.Data(2:end));
+                serial.UserData.Force(2:end));
+            plot(axisForceTime, ...
+                serial.UserData.Time(2:end), ...
+                serial.UserData.Torque(2:end));
         end
     end
 
@@ -132,7 +144,7 @@ stateA = 0;
     end
 
     function resetButtonPushed()
-        plot(axisVoltStep,0,0)
+        plot(axisForceTime,0,0)
         endButton.Text = 'End Recording';
         endButton.BackgroundColor = [95 15 64]/255;
         saveButton.Text = 'Save';
