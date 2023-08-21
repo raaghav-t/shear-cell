@@ -73,6 +73,7 @@ valuePanelValue = uilabel(valuePanel, ...
     "VerticalAlignment", 'center');
 valuePanelValue.Position(3:4) = [80 44];
 
+
 % Field that allows you to change filename (first half)
 materialType = uieditfield(g, "Value", 'set material', ...
     'BackgroundColor',[229/255 202/255 250/255]);
@@ -104,12 +105,13 @@ stateA = 0;
             % Read the ASCII data from the serialport object.
             weight = readline(serial);
             force  = str2double(weight)/9.80665;
-            torque = force * 1;
+
+            % Convert force to torque
+            torque = force * 0.15;
             % Convert the string data to numeric type and save it
             % in the UserData property of the serialport object.
             serial.UserData.Force(end+1) = force;
-
-            serial.UserData.Force(end+1) = torque;
+            serial.UserData.Torque(end+1) = torque;
             % Update the Count value of the serialport object.
             serial.UserData.Time(end+1) = time;
 
